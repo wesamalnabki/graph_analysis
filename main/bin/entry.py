@@ -13,6 +13,9 @@ from operator import itemgetter
 from sklearn.externals import joblib
 from node_model.node_model import OnionGraphBuilder
 
+from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
+from node_model.node_model import OnionGraphBuilder
+
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 
 
@@ -200,3 +203,28 @@ if __name__ == "__main__":
     else:
         processed_onion_dict = build_nodes_dic(data_frame)
         save_obj(processed_onion_dict, 'processed_onion_dict')
+
+    dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+    graph_all = pydot.Dot(graph_type='digraph')
+
+    graph_funs = GraphFunctions(processed_onion_dict)
+    g1, graph_all = graph_funs.create_class_graph(graph_all, data_frame_drug, 'Drugs',
+                                                  'red', dir_list)
+    g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
+                                                  'yellow', dir_list)
+    # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
+    # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency', 'gray', dir_list)
+    # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black', dir_list)
+    # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace', '#3F8A36', dir_list)
+
+    graph_all.add_subgraph(g1)
+    graph_all.add_subgraph(g2)
+    # graph_all.add_subgraph(g3)
+    # graph_all.add_subgraph(g4)
+    # graph_all.add_subgraph(g5)
+    # graph_all.add_subgraph(g6)
+
+    g_nx = nx_pydot.from_pydot(graph_all)
+    print('nodes:', len(g_nx.nodes()))
+    print('edges:', len(g_nx.edges()))
+    graph_all.write('graph_all.dot')

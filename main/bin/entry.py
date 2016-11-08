@@ -1,15 +1,11 @@
 import os
-import re
+
 import tldextract
 from bs4 import BeautifulSoup
-import graphviz as gv
 import pydot
 import pandas as pd
 
-import networkx as nx
-import pydotplus
 from networkx.drawing import nx_pydot
-from operator import itemgetter
 from sklearn.externals import joblib
 
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
@@ -29,8 +25,8 @@ def load_obj(obj_name):
     return obj
 
 
-def load_datafram(datafram_dir='D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'):
-    return pd.read_excel(datafram_dir, encoding='utf-8')
+def load_datafram(dataframe_dir='D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'):
+    return pd.read_excel(dataframe_dir, encoding='utf-8')
 
 
 def load_subdatafram(data_frame):
@@ -117,7 +113,7 @@ def load_subdatafram(data_frame):
            data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi
 
 
-def delete_links(dataset_dir):
+def delete_links():
     for onion in data_frame.Onion:
         onion_file = dataset_dir + '/{0}/{0}.lnk'.format(onion)
         if (os.path.exists(onion_file)):
@@ -134,7 +130,7 @@ def return_links(refs):
     return list(set(extracted_links))
 
 
-def return_all_links(dataset_dir, onion):
+def return_all_links(onion):
     extracted_links1, extracted_links2 = [], []
     onion_file = dataset_dir + '/{0}/{0}.txt'.format(onion)
     with open(onion_file, 'rb') as red:
@@ -158,9 +154,9 @@ def return_all_links(dataset_dir, onion):
     return list(set(extracted_links1 + extracted_links2))
 
 
-def find_links_in_onion(dataset_dir, data_frame):
+def find_links_in_onion(data_frame):
     for onion in data_frame.Onion:
-        extracted_links = return_all_links(dataset_dir, onion)
+        extracted_links = return_all_links(onion)
         if len(extracted_links) > 0:
             with open(dataset_dir + '/{0}/{0}.lnk'.format(onion), 'w', encoding='utf-8') as wrtr:
                 [wrtr.write(extracted_link + '\n') for extracted_link in extracted_links]
@@ -187,13 +183,15 @@ def build_nodes_dic(data_frame):
     print('Finished building nodes dictionary...')
     return processed_onion_dict
 
+
 if __name__ == "__main__":
     data_frame = load_datafram()
     data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
     data_frame_Human_Trafficking, data_frame_Others, data_frame_religion, data_frame_unkown, data_frame_library, \
     data_frame_casino, data_frame_forum, data_frame_art, data_frame_services, data_frame_wiki, data_frame_marketplace, \
-    data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, data_frame_porno, \
-    data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = load_subdatafram(data_frame)
+    data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, \
+    data_frame_porno, data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = \
+        load_subdatafram(data_frame)
 
     # delete_links(dataset_dir)
     # find_links_in_onion(dataset_dir, data_frame)

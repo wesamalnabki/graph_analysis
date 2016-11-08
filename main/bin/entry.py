@@ -11,6 +11,7 @@ import pydotplus
 from networkx.drawing import nx_pydot
 from operator import itemgetter
 from sklearn.externals import joblib
+from node_model.node_model import OnionGraphBuilder
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 
@@ -160,6 +161,27 @@ def find_links_in_onion(dataset_dir, data_frame):
                 [wrtr.write(extracted_link + '\n') for extracted_link in extracted_links]
 
 
+def build_nodes_dic(data_frame):
+    processed_onion_dict = {}
+    print('building nodes dictionary...')
+    for index, onion_sample in data_frame.iterrows():
+        onion_graph_builder = OnionGraphBuilder(dataset_dir, onion_sample)
+        onion_graph_builder.find_outgoing_links()
+        processed_onion_dict[onion_sample.Onion] = onion_graph_builder
+
+    for index, onion_sample in processed_onion_dict.items():
+        link = onion_sample.get_onion()
+        in_all = onion_sample.get_outgoing_links_all()
+        for in_single in in_all:
+            if in_single in processed_onion_dict.keys():  # and in_single !=link:
+                if link.endswith('.onion'):
+                    processed_onion_dict[in_single].append_to_incomming_list_onion(link)
+                else:
+                    processed_onion_dict[in_single].append_to_incomming_list_surface(link)
+                processed_onion_dict[in_single].append_to_incomming_list_all(link)
+    print('Finished building nodes dictionary...')
+    return processed_onion_dict
+
 if __name__ == "__main__":
     data_frame = load_datafram()
     data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
@@ -171,3 +193,8 @@ if __name__ == "__main__":
     # delete_links(dataset_dir)
 
     # find_links_in_onion(dataset_dir, data_frame)
+
+    processed_onion_dict = build_nodes_dic(data_frame)
+
+    save_classifer(processed_onion_dict, 'processed_onion_dict')
+    processed_onion_dict = load_classifer('processed_onion_dict')

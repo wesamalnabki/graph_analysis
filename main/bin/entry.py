@@ -11,10 +11,9 @@ import pydotplus
 from networkx.drawing import nx_pydot
 from operator import itemgetter
 from sklearn.externals import joblib
-from node_model.node_model import OnionGraphBuilder
 
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
-from node_model.node_model import OnionGraphBuilder
+from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 
@@ -25,8 +24,9 @@ def save_obj(clf, obj_name):
 
 
 def load_obj(obj_name):
+    obj = joblib.load(obj_name + '.pkl')
     print(obj_name + ' Object has been loaded!')
-    return joblib.load(obj_name + '.pkl')
+    return obj
 
 
 def load_datafram(datafram_dir='D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'):
@@ -213,9 +213,12 @@ if __name__ == "__main__":
     g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
                                                   'yellow', dir_list)
     # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
-    # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency', 'gray', dir_list)
-    # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black', dir_list)
-    # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace', '#3F8A36', dir_list)
+    # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
+    #  'gray', dir_list)
+    # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
+    #  dir_list)
+    # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace',
+    #  '#3F8A36', dir_list)
 
     graph_all.add_subgraph(g1)
     graph_all.add_subgraph(g2)

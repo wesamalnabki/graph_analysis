@@ -15,13 +15,15 @@ from node_model.node_model import OnionGraphBuilder
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 
-def save_classifer(clf, clf_name):
-    joblib.dump(clf, clf_name + '.pkl', compress=9)
-    print(clf_name + ' classifer has been saved!')
+
+def save_obj(clf, obj_name):
+    joblib.dump(clf, obj_name + '.pkl', compress=9)
+    print(obj_name + ' Object has been saved!')
 
 
-def load_classifer(clf_name):
-    return joblib.load(clf_name + '.pkl')
+def load_obj(obj_name):
+    print(obj_name + ' Object has been loaded!')
+    return joblib.load(obj_name + '.pkl')
 
 
 def load_datafram(datafram_dir='D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'):
@@ -191,10 +193,10 @@ if __name__ == "__main__":
     data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = load_subdatafram(data_frame)
 
     # delete_links(dataset_dir)
-
     # find_links_in_onion(dataset_dir, data_frame)
 
-    processed_onion_dict = build_nodes_dic(data_frame)
-
-    save_classifer(processed_onion_dict, 'processed_onion_dict')
-    processed_onion_dict = load_classifer('processed_onion_dict')
+    if os.path.exists('processed_onion_dict.pkl'):
+        processed_onion_dict = load_obj('processed_onion_dict')
+    else:
+        processed_onion_dict = build_nodes_dic(data_frame)
+        save_obj(processed_onion_dict, 'processed_onion_dict')

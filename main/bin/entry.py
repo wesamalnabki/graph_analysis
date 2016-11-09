@@ -12,8 +12,6 @@ from onion_graph_model.onion_graph_functions.oninon_graph_functions import Graph
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
 from onion_graph_model.onion_node_model.onion_node_model import *
 
-
-
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'
 output_dir = 'D:/Wesam/Graph_Analysis_Results/'
@@ -210,7 +208,6 @@ if __name__ == "__main__":
     # Create an object of GraphFunctions class
     graph_funs = GraphFunctions(processed_onion_dict)
 
-
     if not os.path.exists(output_dir + 'graph_all.dot'):
         graph_all = pydot.Dot(graph_type='digraph')
 
@@ -232,7 +229,7 @@ if __name__ == "__main__":
         #  '#3F8A36', dir_list)
 
         graph_all.add_subgraph(g1)
-        #graph_all.add_subgraph(g2)
+        # graph_all.add_subgraph(g2)
         # graph_all.add_subgraph(g3)
         # graph_all.add_subgraph(g4)
         # graph_all.add_subgraph(g5)
@@ -247,10 +244,9 @@ if __name__ == "__main__":
     graph_all_nx = GraphFunctions.convert_multidirectedgraph_to_simpledirectedgraph(graph_all)
     graph_funs.print_graph_info(graph_all_nx)
 
-    #graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
+    # graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
 
     # Calculate PR for the graph
-
     pr = graph_funs.graph_page_rank(graph=graph_all_nx)
 
     # dump pagerank to file
@@ -261,8 +257,8 @@ if __name__ == "__main__":
     g, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
     # Taking forever, need to investigate
     # g, bet = graph_funs.calculate_betweenness(graph_all_nx)
+    # TODO: Check the result of calculate_eigenvector_centrality functions
     g, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
     g, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
-
 
     print('Done!')

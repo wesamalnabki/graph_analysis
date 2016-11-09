@@ -10,6 +10,9 @@ from sklearn.externals import joblib
 
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
+from onion_graph_model.onion_node_model.onion_node_model import *
+
+
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'
@@ -207,14 +210,19 @@ if __name__ == "__main__":
     # Create an object of GraphFunctions class
     graph_funs = GraphFunctions(processed_onion_dict)
 
+
     if not os.path.exists(output_dir + 'graph_all.dot'):
-        dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
         graph_all = pydot.Dot(graph_type='digraph')
 
-        g1, graph_all = graph_funs.create_class_graph(graph_all, data_frame_drug, 'Drugs',
-                                                      'red', dir_list)
-        g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
-                                                      'yellow', dir_list)
+        dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+
+        g1, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_drug,
+                                                      node_group='Drugs', node_color='red', dir_list=dir_list,
+                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=True)
+        # g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
+        #                                              'yellow', dir_list, ignore_incoming_from_dict = True,
+        #  ignore_outgoing_to_dict = True)
+
         # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
         # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
         #  'gray', dir_list)
@@ -224,45 +232,37 @@ if __name__ == "__main__":
         #  '#3F8A36', dir_list)
 
         graph_all.add_subgraph(g1)
-        graph_all.add_subgraph(g2)
+        #graph_all.add_subgraph(g2)
         # graph_all.add_subgraph(g3)
         # graph_all.add_subgraph(g4)
         # graph_all.add_subgraph(g5)
         # graph_all.add_subgraph(g6)
 
-        graph_all.write(output_dir + 'graph_all.dot')
+        graph_funs.write_graph_dot_to_file(graph_all, output_dir + 'graph_all.dot')
 
     else:
         print('Graph already exist. Read from file')
         (graph_all,) = pydot.graph_from_dot_file(output_dir + 'graph_all.dot')
 
-    # Convert Pydot graph to NetworkX format.
-    g_nx = nx_pydot.from_pydot(graph_all)
-    print('nodes:', len(g_nx.nodes()))
-    print('edges:', len(g_nx.edges()))
+    graph_all_nx = GraphFunctions.convert_multidirectedgraph_to_simpledirectedgraph(graph_all)
+    graph_funs.print_graph_info(graph_all_nx)
 
-    # Dump the results to xls file:
-    df_pr = pd.DataFrame(columns=('Onion', 'Main_Class', 'In_Links', 'Out_Links', 'Weight'))
+    #graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
 
     # Calculate PR for the graph
-    pr = graph_funs.graph_page_rank(g_nx)
 
-    # Remove the file of new address
-    if os.path.exists(output_dir + 'new_onion.txt'):
-        os.remove(output_dir + 'new_onion.txt')
+    pr = graph_funs.graph_page_rank(graph=graph_all_nx)
 
-    for index, onion_address in enumerate(pr):
-        if onion_address not in processed_onion_dict.keys():
-            with open(output_dir + 'new_onion.txt', 'a') as writer:
-                writer.writelines(onion_address + '\n')
-        else:
-            ob = processed_onion_dict[onion_address]
-            if ob.get_onion() in g_nx.nodes():
-                df_pr.loc[index] = [ob.get_onion(),
-                                    ob.get_main_class(),
-                                    g_nx.in_degree(ob.get_onion()),
-                                    g_nx.out_degree(ob.get_onion()),
-                                    pr[onion_address]
-                                    ]
-        graph_funs.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
+    # dump pagerank to file
+    graph_funs.dump_pagr_rank_results(output_dir, pr, graph_all_nx)
+
+    g, deg = graph_funs.calculate_degree(graph_all_nx)
+    g, indeg = graph_funs.calculate_indegree(graph_all_nx)
+    g, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
+    # Taking forever, need to investigate
+    # g, bet = graph_funs.calculate_betweenness(graph_all_nx)
+    g, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
+    g, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
+
+
     print('Done!')

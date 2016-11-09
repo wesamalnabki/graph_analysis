@@ -1,12 +1,14 @@
 import pydot
 import pandas as pd
+import networkx as nx
+
 
 
 class GraphFunctions(object):
     def __init__(self, processed_onion_dict):
         self.processed_onion_dict = processed_onion_dict
 
-    def write_dataframe_xls(data_frame, file_name):
+    def write_dataframe_xls(self, data_frame, file_name):
         # Create a Pandas Excel writer using XlsxWriter as the engine.
         writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
 
@@ -15,6 +17,58 @@ class GraphFunctions(object):
 
         # Close the Pandas Excel writer and output the Excel file.
         writer.save()
+
+    def calculate_degree(self, graph):
+        print("Calculating degree...")
+        g = graph
+        deg = nx.degree(g)
+        nx.set_node_attributes(g, 'degree', deg)
+        return g, deg
+
+    def calculate_indegree(self, graph):
+        # will only work on DiGraph (directed graph)
+        print("Calculating indegree...")
+        g = graph
+        indeg = g.in_degree()
+        nx.set_node_attributes(g, 'indegree', indeg)
+        return g, indeg
+
+    def calculate_outdegree(self, graph):
+        # will only work on DiGraph (directed graph)
+        print("Calculating outdegree...")
+        g = graph
+        outdeg = g.out_degree()
+        nx.set_node_attributes(g, 'outdegree', outdeg)
+        return g, outdeg
+
+    def calculate_betweenness(graph):
+        print("Calculating betweenness...")
+        g = graph
+        bc = nx.betweenness_centrality(g)
+        nx.set_node_attributes(g, 'betweenness', bc)
+        return g, bc
+
+    def calculate_eigenvector_centrality(self, graph):
+        print("Calculating Eigenvector Centrality...")
+        g = graph
+        ec = nx.eigenvector_centrality(g)
+        nx.set_node_attributes(g, 'eigen_cent', ec)
+        # ec_sorted = sorted(ec.items(), key=itemgetter(1), reverse=True)
+        # color=nx.get_node_attributes(G,'betweenness')  (returns a dict keyed by node ids)
+        return g, ec
+
+    def find_cliques(self, graph):
+        # returns cliques as sorted list
+        g = graph
+        cl = nx.algorithms.find_cliques(g)
+        cl = sorted(list(cl), key=len, reverse=True)
+        print("Number of cliques:", len(cl))
+        cl_sizes = [len(c) for c in cl]
+        print("Size of cliques:", cl_sizes)
+        return cl
+
+    def graph_page_rank(self, graph, alpha=0.85):
+        return nx.pagerank_scipy(graph, alpha=alpha)
 
     def is_node_in_graph(self, node_name, graph):
         if len(graph.get_node(name='"{0}"'.format(node_name))) > 0:

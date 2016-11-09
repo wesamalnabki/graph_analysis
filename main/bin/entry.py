@@ -12,20 +12,22 @@ from onion_graph_model.onion_graph_functions.oninon_graph_functions import Graph
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
+dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'
+output_dir = 'D:/Wesam/Graph_Analysis_Results/'
 
 
 def save_obj(clf, obj_name):
-    joblib.dump(clf, obj_name + '.pkl', compress=9)
+    joblib.dump(clf, output_dir + obj_name + '.pkl', compress=9)
     print(obj_name + ' Object has been saved!')
 
 
 def load_obj(obj_name):
-    obj = joblib.load(obj_name + '.pkl')
+    obj = joblib.load(output_dir + obj_name + '.pkl')
     print(obj_name + ' Object has been loaded!')
     return obj
 
 
-def load_datafram(dataframe_dir='D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'):
+def load_datafram(dataframe_dir=dataset_dir_xls):
     return pd.read_excel(dataframe_dir, encoding='utf-8')
 
 
@@ -196,36 +198,71 @@ if __name__ == "__main__":
     # delete_links(dataset_dir)
     # find_links_in_onion(dataset_dir, data_frame)
 
-    if os.path.exists('processed_onion_dict.pkl'):
+    if os.path.exists(output_dir + 'processed_onion_dict.pkl'):
         processed_onion_dict = load_obj('processed_onion_dict')
     else:
         processed_onion_dict = build_nodes_dic(data_frame)
         save_obj(processed_onion_dict, 'processed_onion_dict')
 
-    dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
-    graph_all = pydot.Dot(graph_type='digraph')
-
+    # Create an object of GraphFunctions class
     graph_funs = GraphFunctions(processed_onion_dict)
-    g1, graph_all = graph_funs.create_class_graph(graph_all, data_frame_drug, 'Drugs',
-                                                  'red', dir_list)
-    g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
-                                                  'yellow', dir_list)
-    # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
-    # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
-    #  'gray', dir_list)
-    # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
-    #  dir_list)
-    # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace',
-    #  '#3F8A36', dir_list)
 
-    graph_all.add_subgraph(g1)
-    graph_all.add_subgraph(g2)
-    # graph_all.add_subgraph(g3)
-    # graph_all.add_subgraph(g4)
-    # graph_all.add_subgraph(g5)
-    # graph_all.add_subgraph(g6)
+    if not os.path.exists(output_dir + 'graph_all.dot'):
+        dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+        graph_all = pydot.Dot(graph_type='digraph')
 
+        g1, graph_all = graph_funs.create_class_graph(graph_all, data_frame_drug, 'Drugs',
+                                                      'red', dir_list)
+        g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
+                                                      'yellow', dir_list)
+        # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
+        # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
+        #  'gray', dir_list)
+        # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
+        #  dir_list)
+        # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace',
+        #  '#3F8A36', dir_list)
+
+        graph_all.add_subgraph(g1)
+        graph_all.add_subgraph(g2)
+        # graph_all.add_subgraph(g3)
+        # graph_all.add_subgraph(g4)
+        # graph_all.add_subgraph(g5)
+        # graph_all.add_subgraph(g6)
+
+        graph_all.write(output_dir + 'graph_all.dot')
+
+    else:
+        print('Graph already exist. Read from file')
+        (graph_all,) = pydot.graph_from_dot_file(output_dir + 'graph_all.dot')
+
+    # Convert Pydot graph to NetworkX format.
     g_nx = nx_pydot.from_pydot(graph_all)
     print('nodes:', len(g_nx.nodes()))
     print('edges:', len(g_nx.edges()))
-    graph_all.write('graph_all.dot')
+
+    # Dump the results to xls file:
+    df_pr = pd.DataFrame(columns=('Onion', 'Main_Class', 'In_Links', 'Out_Links', 'Weight'))
+
+    # Calculate PR for the graph
+    pr = graph_funs.graph_page_rank(g_nx)
+
+    # Remove the file of new address
+    if os.path.exists(output_dir + 'new_onion.txt'):
+        os.remove(output_dir + 'new_onion.txt')
+
+    for index, onion_address in enumerate(pr):
+        if onion_address not in processed_onion_dict.keys():
+            with open(output_dir + 'new_onion.txt', 'a') as writer:
+                writer.writelines(onion_address + '\n')
+        else:
+            ob = processed_onion_dict[onion_address]
+            if ob.get_onion() in g_nx.nodes():
+                df_pr.loc[index] = [ob.get_onion(),
+                                    ob.get_main_class(),
+                                    g_nx.in_degree(ob.get_onion()),
+                                    g_nx.out_degree(ob.get_onion()),
+                                    pr[onion_address]
+                                    ]
+        graph_funs.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
+    print('Done!')

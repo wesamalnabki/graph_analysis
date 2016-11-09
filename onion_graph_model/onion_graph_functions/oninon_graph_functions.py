@@ -83,7 +83,6 @@ class GraphFunctions(object):
     def create_class_graph(self, graph_total, data_frame, node_group, node_color, dir_list=[],
                            ignore_incoming_from_dict=True, ignore_outgoing_to_dict=True):
         # Create the graph:
-        # g = pydot.Dot(graph_type='digraph')
         g = pydot.Cluster(graph_name=node_group)
 
         # Create Nodes
@@ -105,8 +104,9 @@ class GraphFunctions(object):
 
             # plot in-out going nodes:
             for out_node in onion.get_outgoing_links_onion():
-                # if out_node in dir_list:
-                #    continue
+                if ignore_outgoing_to_dict:
+                    if out_node in dir_list:
+                        continue
 
                 # check if the out_node does not exist in the nodes list:
                 if not self.is_node_in_graph(out_node, g):
@@ -120,8 +120,9 @@ class GraphFunctions(object):
                     graph_total.add_edge(pydot.Edge(onion.get_onion(), out_node))
 
             for in_node in onion.get_incoming_links_onion():
-                # if in_node in dir_list:
-                #    continue
+                if ignore_incoming_from_dict:
+                    if in_node in dir_list:
+                        continue
 
                 # check if the in_node does not exist in the nodes list:
                 if not self.is_node_in_graph(in_node, g):

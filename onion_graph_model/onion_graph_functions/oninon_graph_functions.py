@@ -6,11 +6,6 @@ from networkx.drawing import nx_pydot
 import os
 from operator import itemgetter
 
-
-
-
-
-
 class GraphFunctions(object):
     def __init__(self, processed_onion_dict):
         self.processed_onion_dict = processed_onion_dict
@@ -114,6 +109,13 @@ class GraphFunctions(object):
         self.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
         print('Finish dumping pageRank results')
 
+    def set_node_attributes_onion(self, G):
+        for node in G.nodes():
+            if node in self.processed_onion_dict.keys():
+                obj = self.processed_onion_dict[node]
+                G.node[node]['group'] = obj.get_main_class()
+                G.node[node]['label'] = obj.get_main_class()  # obj.get_onion()
+
     def calculate_degree_centrality(self, graph):
         print("Calculating Degree Centrality...")
         g = graph
@@ -136,7 +138,10 @@ class GraphFunctions(object):
 
     def graph_page_rank(self, graph, alpha=0.85):
         print('Calculating PageRank..')
-        return nx.pagerank_scipy(graph, alpha=alpha)
+        g = graph
+        pr = nx.pagerank_scipy(g, alpha=alpha)
+        nx.set_node_attributes(g, 'page_rank', pr)
+        return g, pr
 
     def is_node_in_graph(self, node_name, graph):
         if len(graph.get_node(name='"{0}"'.format(node_name))) > 0:
@@ -149,15 +154,9 @@ class GraphFunctions(object):
         return False
 
     @staticmethod
-    def convert_multidirectedgraph_to_simpledirectedgraph(graph):
-        # Convert Pydot graph to NetworkX format.
-        graph_nx = nx_pydot.from_pydot(graph)
+    def pydot_2_networkx(graph):
+        return nx.DiGraph(nx_pydot.from_pydot(graph))
 
-        # Covert the MultiDirectedGraph to Simple Directed Graph:
-        G = nx.DiGraph()
-        for u, v in graph_nx.edges_iter(data=False):
-            G.add_edge(u, v)
-        return G
 
     def create_class_graph(self, graph_total, data_frame, node_group, node_color, dir_list=[],
                            ignore_incoming_from_dict=True, ignore_outgoing_to_dict=True):

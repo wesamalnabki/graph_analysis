@@ -241,13 +241,17 @@ if __name__ == "__main__":
         print('Graph already exist. Read from file')
         (graph_all,) = pydot.graph_from_dot_file(output_dir + 'graph_all.dot')
 
-    graph_all_nx = GraphFunctions.convert_multidirectedgraph_to_simpledirectedgraph(graph_all)
+    graph_all_nx = GraphFunctions.pydot_2_networkx(graph_all)
+
+    # Assign each node a color, main_class
+    graph_funs.set_node_attributes_onion(graph_all_nx)
+
     graph_funs.print_graph_info(graph_all_nx)
 
     # graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
 
     # Calculate PR for the graph
-    pr = graph_funs.graph_page_rank(graph=graph_all_nx)
+    g, pr = graph_funs.graph_page_rank(graph=graph_all_nx)
 
     # dump pagerank to file
     graph_funs.dump_pagr_rank_results(output_dir, pr, graph_all_nx)
@@ -260,5 +264,8 @@ if __name__ == "__main__":
     # TODO: Check the result of calculate_eigenvector_centrality functions
     g, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
     g, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
+
+    g_pydot = nx_pydot.to_pydot(g)
+    graph_funs.write_graph_dot_to_file(g_pydot, output_dir + 'graph_all_with_proprties.dot')
 
     print('Done!')

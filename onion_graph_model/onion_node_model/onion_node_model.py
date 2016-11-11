@@ -6,6 +6,7 @@ class OnionGraphBuilder(object):
 
         self.dataset_dir = dataset_dir
 
+
         self.incoming_links_onion = []
         self.incoming_links_all = []
         self.incoming_links_surface = []
@@ -18,6 +19,7 @@ class OnionGraphBuilder(object):
         self.text_hash = onion_sample.Hash
         self.onion = onion_sample.Onion
         self.main_class = onion_sample.Main_Class
+        self.ID = onion_sample.ID
 
     def find_outgoing_links(self):
         onion_file = self.dataset_dir + '/{0}/{0}.lnk'.format(self.onion)
@@ -96,3 +98,6 @@ class OnionGraphBuilder(object):
 
     def get_onion_lang(self):
         return self.lang
+
+    def get_onion_ID(self):
+        return self.ID

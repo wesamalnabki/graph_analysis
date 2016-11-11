@@ -1,16 +1,16 @@
-import os
-
 import tldextract
 from bs4 import BeautifulSoup
 import pydot
 import pandas as pd
-
-from networkx.drawing import nx_pydot
 from sklearn.externals import joblib
-
+import os
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
+from onion_graph_model.onion_graph_functions.oninon_graph_functions import dump_json, load_json
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
-from onion_graph_model.onion_node_model.onion_node_model import *
+
+from networkx.readwrite import json_graph
+import networkx as nx
+
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
 dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'
@@ -116,7 +116,7 @@ def load_subdatafram(data_frame):
            data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi
 
 
-def delete_links():
+def delete_links(data_frame):
     for onion in data_frame.Onion:
         onion_file = dataset_dir + '/{0}/{0}.lnk'.format(onion)
         if (os.path.exists(onion_file)):
@@ -187,7 +187,7 @@ def build_nodes_dic(data_frame):
     return processed_onion_dict
 
 
-if __name__ == "__main__":
+def main():
     data_frame = load_datafram()
     data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
     data_frame_Human_Trafficking, data_frame_Others, data_frame_religion, data_frame_unkown, data_frame_library, \
@@ -195,9 +195,6 @@ if __name__ == "__main__":
     data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, \
     data_frame_porno, data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = \
         load_subdatafram(data_frame)
-
-    # delete_links(dataset_dir)
-    # find_links_in_onion(dataset_dir, data_frame)
 
     if os.path.exists(output_dir + 'processed_onion_dict.pkl'):
         processed_onion_dict = load_obj('processed_onion_dict')
@@ -215,12 +212,14 @@ if __name__ == "__main__":
 
         g1, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_drug,
                                                       node_group='Drugs', node_color='red', dir_list=dir_list,
-                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=True)
-        # g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
-        #                                              'yellow', dir_list, ignore_incoming_from_dict = True,
-        #  ignore_outgoing_to_dict = True)
+                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
+        g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
+                                                      'yellow', dir_list,
+                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
 
-        # g3, graph_all = create_class_graph(graph_all, data_frame_cc, processed_onion_dict, 'CC', 'pink', dir_list)
+        g3, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_cc, \
+                                                      node_group='CC', node_color='pink', dir_list=dir_list, \
+                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
         # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
         #  'gray', dir_list)
         # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
@@ -229,8 +228,8 @@ if __name__ == "__main__":
         #  '#3F8A36', dir_list)
 
         graph_all.add_subgraph(g1)
-        # graph_all.add_subgraph(g2)
-        # graph_all.add_subgraph(g3)
+        graph_all.add_subgraph(g2)
+        graph_all.add_subgraph(g3)
         # graph_all.add_subgraph(g4)
         # graph_all.add_subgraph(g5)
         # graph_all.add_subgraph(g6)
@@ -244,28 +243,30 @@ if __name__ == "__main__":
     graph_all_nx = GraphFunctions.pydot_2_networkx(graph_all)
 
     # Assign each node a color, main_class
-    graph_funs.set_node_attributes_onion(graph_all_nx)
+    graph_all_nx = graph_funs.set_node_attributes_onion(graph_all_nx)
 
     graph_funs.print_graph_info(graph_all_nx)
 
     # graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
 
-    # Calculate PR for the graph
-    g, pr = graph_funs.graph_page_rank(graph=graph_all_nx)
+    # Graph Analysis
+    graph_all_nx, pr = graph_funs.graph_page_rank(graph=graph_all_nx)
+    graph_all_nx, deg = graph_funs.calculate_degree(graph_all_nx)
+    graph_all_nx, indeg = graph_funs.calculate_indegree(graph_all_nx)
+    graph_all_nx, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
+    graph_all_nx, betwndeg = graph_funs.calculate_betweenness(graph_all_nx)
 
-    # dump pagerank to file
-    graph_funs.dump_pagr_rank_results(output_dir, pr, graph_all_nx)
-
-    g, deg = graph_funs.calculate_degree(graph_all_nx)
-    g, indeg = graph_funs.calculate_indegree(graph_all_nx)
-    g, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
-    # Taking forever, need to investigate
-    # g, bet = graph_funs.calculate_betweenness(graph_all_nx)
     # TODO: Check the result of calculate_eigenvector_centrality functions
-    g, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
-    g, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
+    graph_all_nx, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
+    graph_all_nx, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
 
-    g_pydot = nx_pydot.to_pydot(g)
-    graph_funs.write_graph_dot_to_file(g_pydot, output_dir + 'graph_all_with_proprties.dot')
-
+    dump_json(output_dir + 'graph.json', graph_all_nx)
+    graph_funs.dump_graph_xls(output_dir, graph_all_nx)
     print('Done!')
+
+
+
+if __name__ == "__main__":
+    # delete_links(data_frame)
+    # find_links_in_onion(data_frame)
+    main()

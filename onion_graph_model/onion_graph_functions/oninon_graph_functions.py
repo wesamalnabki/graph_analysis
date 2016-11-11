@@ -1,10 +1,26 @@
 import pydot
+import json
 import pandas as pd
 import networkx as nx
 from networkx.drawing import nx_pydot
+from networkx.readwrite import json_graph
 
 import os
 from operator import itemgetter
+
+
+# Utility function: saves data in JSON format
+def dump_json(out_file_name, graph):
+    print('Dumping graph to JSON')
+    data = json_graph.node_link_data(graph)
+    with open(out_file_name, 'w') as out_file:
+        out_file.write(json.dumps(data))
+
+
+# Utility function: loads JSON data into a Python object
+def load_json(file_name):
+    with open(file_name) as f:
+        return json.loads(f.read())
 
 class GraphFunctions(object):
     def __init__(self, processed_onion_dict):
@@ -12,8 +28,7 @@ class GraphFunctions(object):
 
     @staticmethod
     def print_graph_info(graph):
-        print('nodes:', len(graph.nodes()))
-        print('edges:', len(graph.edges()))
+        print(nx.info(graph))
 
     @staticmethod
     def calculate_indegree(graph):
@@ -85,36 +100,37 @@ class GraphFunctions(object):
         print("Size of cliques:", cl_sizes)
         return cl
 
-    def dump_pagr_rank_results(self, output_dir, pr, graph):
+    def dump_graph_xls(self, output_dir, graph):
         # Dump the results to xls file:
-        df_pr = pd.DataFrame(columns=('Onion', 'Main_Class', 'In_Links', 'Out_Links', 'Weight'))
+        df_pr = pd.DataFrame(columns=('Onion', 'group', 'degree',
+                                      'indegree', 'outdegree', 'degree_cent',
+                                      'eigen_cent', 'betweenness', 'page_rank'))
 
-        # Remove the file of new address
-        if os.path.exists(output_dir + 'new_onion.txt'):
-            os.remove(output_dir + 'new_onion.txt')
+        for index, node in enumerate(graph.nodes()):
+            n_d = graph.node[node]
+            ## Check if node in ND
+            try:
+                df_pr.loc[index] = [n_d['name'], n_d['group'], n_d['degree'],
+                                    n_d['indegree'], n_d['outdegree'], n_d['degree_cent'],
+                                    n_d['eigen_cent'], n_d['betweenness'], n_d['page_rank']]
+            except:
+                print(n_d)
 
-        for index, onion_address in enumerate(pr):
-            if onion_address not in self.processed_onion_dict.keys():
-                with open(output_dir + 'new_onion.txt', 'a') as writer:
-                    writer.writelines(onion_address + '\n')
-            else:
-                ob = self.processed_onion_dict[onion_address]
-                if ob.get_onion() in graph.nodes():
-                    df_pr.loc[index] = [ob.get_onion(),
-                                        ob.get_main_class(),
-                                        graph.in_degree(ob.get_onion()),
-                                        graph.out_degree(ob.get_onion()),
-                                        pr[onion_address]
-                                        ]
         self.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
-        print('Finish dumping pageRank results')
+        print('Finish dumping graph results')
 
     def set_node_attributes_onion(self, G):
         for node in G.nodes():
             if node in self.processed_onion_dict.keys():
                 obj = self.processed_onion_dict[node]
                 G.node[node]['group'] = obj.get_main_class()
-                G.node[node]['label'] = obj.get_main_class()  # obj.get_onion()
+                G.node[node]['label'] = obj.get_onion_ID()
+                G.node[node]['name'] = obj.get_onion()
+            else:
+                G.node[node]['group'] = 'New_Node'
+                G.node[node]['label'] = '-1'
+                G.node[node]['name'] = node
+        return G
 
     def calculate_degree_centrality(self, graph):
         print("Calculating Degree Centrality...")
@@ -127,7 +143,7 @@ class GraphFunctions(object):
 
         return graph, dc
 
-    def report_node_data(graph, node=""):
+    def report_node_data(self, graph, node=""):
         g = graph
         if len(node) == 0:
             print("Found these sample attributes on the nodes:")
@@ -156,6 +172,10 @@ class GraphFunctions(object):
     @staticmethod
     def pydot_2_networkx(graph):
         return nx.DiGraph(nx_pydot.from_pydot(graph))
+
+    @staticmethod
+    def networkx_2_pydot(graph):
+        return nx_pydot.from_pydot(graph)
 
 
     def create_class_graph(self, graph_total, data_frame, node_group, node_color, dir_list=[],

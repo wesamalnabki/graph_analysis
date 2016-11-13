@@ -9,22 +9,35 @@ import os
 from operator import itemgetter
 
 
-# Utility function: saves data in JSON format
-def dump_json(out_file_name, graph):
+def save_to_jsonfile(filename, graph):
     print('Dumping graph to JSON')
-    data = json_graph.node_link_data(graph)
-    with open(out_file_name, 'w') as out_file:
-        out_file.write(json.dumps(data))
+    g = graph
+    g_json = json_graph.node_link_data(g)  # node-link format to serialize
+    json.dump(g_json, open(filename, 'w'))
 
 
-# Utility function: loads JSON data into a Python object
-def load_json(file_name):
-    with open(file_name) as f:
-        return json.loads(f.read())
+def read_json_file(filename, info=True):
+    graph = json_graph.load(open(filename))
+    if info:
+        print("Read in file ", filename)
+        print(nx.info(graph))
+    return graph
+
+
 
 class GraphFunctions(object):
     def __init__(self, processed_onion_dict):
         self.processed_onion_dict = processed_onion_dict
+
+    def find_cliques(graph):
+        # returns cliques as sorted list
+        g = graph
+        cl = nx.find_cliques(g)
+        cl = sorted(list(cl), key=len, reverse=True)
+        print("Number of cliques:", len(cl))
+        cl_sizes = [len(c) for c in cl]
+        print("Size of cliques:", cl_sizes)
+        return cl
 
     @staticmethod
     def print_graph_info(graph):
@@ -83,8 +96,12 @@ class GraphFunctions(object):
     def calculate_eigenvector_centrality(graph):
         print('Calculating Eigenvector Centrality...')
         g = graph
-        ec = nx.eigenvector_centrality(g)
-        nx.set_node_attributes(g, 'eigen_cent', ec)
+        try:
+            ec = nx.eigenvector_centrality(g)
+            nx.set_node_attributes(g, 'eigen_cent', ec)
+        except:
+            print('ERROR')
+            return g, None
         # ec_sorted = sorted(ec.items(), key=itemgetter(1), reverse=True)
         # color=nx.get_node_attributes(G,'betweenness')  (returns a dict keyed by node ids)
         return g, ec
@@ -110,10 +127,11 @@ class GraphFunctions(object):
             n_d = graph.node[node]
             ## Check if node in ND
             try:
-                df_pr.loc[index] = [n_d['name'], n_d['group'], n_d['degree'],
+                df_pr.loc[index] = [n_d['onion'], n_d['group'], n_d['degree'],
                                     n_d['indegree'], n_d['outdegree'], n_d['degree_cent'],
                                     n_d['eigen_cent'], n_d['betweenness'], n_d['page_rank']]
             except:
+                ## TODO add the not found node to DF
                 print(n_d)
 
         self.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
@@ -124,12 +142,13 @@ class GraphFunctions(object):
             if node in self.processed_onion_dict.keys():
                 obj = self.processed_onion_dict[node]
                 G.node[node]['group'] = obj.get_main_class()
-                G.node[node]['label'] = obj.get_onion_ID()
-                G.node[node]['name'] = obj.get_onion()
+                G.node[node]['label'] = obj.get_main_class()
+                G.node[node]['onion'] = obj.get_onion()
+                G.node[node]['onion'] = obj.get_onion_ID()
             else:
                 G.node[node]['group'] = 'New_Node'
-                G.node[node]['label'] = '-1'
-                G.node[node]['name'] = node
+                G.node[node]['label'] = 'New_Node'
+                G.node[node]['onion'] = node
         return G
 
     def calculate_degree_centrality(self, graph):
@@ -138,8 +157,8 @@ class GraphFunctions(object):
         dc = nx.degree_centrality(g)
         nx.set_node_attributes(g, 'degree_cent', dc)
         degcent_sorted = sorted(dc.items(), key=itemgetter(1), reverse=True)
-        for key, value in degcent_sorted[0:10]:
-            print("Highest degree Centrality:", key, value)
+        # for key, value in degcent_sorted[0:10]:
+        #    print("Highest degree Centrality:", key, value)
 
         return graph, dc
 
@@ -175,7 +194,7 @@ class GraphFunctions(object):
 
     @staticmethod
     def networkx_2_pydot(graph):
-        return nx_pydot.from_pydot(graph)
+        return nx_pydot.to_pydot(graph)
 
 
     def create_class_graph(self, graph_total, data_frame, node_group, node_color, dir_list=[],

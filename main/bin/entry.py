@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.externals import joblib
 import os
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
-from onion_graph_model.onion_graph_functions.oninon_graph_functions import dump_json, load_json
+from onion_graph_model.onion_graph_functions.oninon_graph_functions import save_to_jsonfile, read_json_file
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
 
 from networkx.readwrite import json_graph
@@ -187,39 +187,29 @@ def build_nodes_dic(data_frame):
     return processed_onion_dict
 
 
-def main():
-    data_frame = load_datafram()
-    data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
-    data_frame_Human_Trafficking, data_frame_Others, data_frame_religion, data_frame_unkown, data_frame_library, \
-    data_frame_casino, data_frame_forum, data_frame_art, data_frame_services, data_frame_wiki, data_frame_marketplace, \
-    data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, \
-    data_frame_porno, data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = \
-        load_subdatafram(data_frame)
+def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, graph_name_dot, graph_name_x):
+    class_name = class_name + '/'
+    if not os.path.exists(output_dir + class_name):
+        os.makedirs(output_dir + class_name)
 
-    if os.path.exists(output_dir + 'processed_onion_dict.pkl'):
-        processed_onion_dict = load_obj('processed_onion_dict')
-    else:
-        processed_onion_dict = build_nodes_dic(data_frame)
-        save_obj(processed_onion_dict, 'processed_onion_dict')
+
 
     # Create an object of GraphFunctions class
     graph_funs = GraphFunctions(processed_onion_dict)
 
-    if not os.path.exists(output_dir + 'graph_all.dot'):
+    if not os.path.exists(output_dir + class_name + graph_name_dot):
         graph_all = pydot.Dot(graph_type='digraph')
 
-        dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+        g1, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_class,
+                                                      node_group=class_name[:-1], node_color='red', dir_list=dir_list,
+                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
+        # g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
+        #                                              'yellow', dir_list,
+        #                                              ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
 
-        g1, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_drug,
-                                                      node_group='Drugs', node_color='red', dir_list=dir_list,
-                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
-        g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
-                                                      'yellow', dir_list,
-                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
-
-        g3, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_cc, \
-                                                      node_group='CC', node_color='pink', dir_list=dir_list, \
-                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
+        # g3, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_cc, \
+        #                                              node_group='CC', node_color='pink', dir_list=dir_list, \
+        #                                              ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
         # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
         #  'gray', dir_list)
         # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
@@ -228,17 +218,18 @@ def main():
         #  '#3F8A36', dir_list)
 
         graph_all.add_subgraph(g1)
-        graph_all.add_subgraph(g2)
-        graph_all.add_subgraph(g3)
+        # graph_all.add_subgraph(g2)
+        #graph_all.add_subgraph(g3)
         # graph_all.add_subgraph(g4)
         # graph_all.add_subgraph(g5)
         # graph_all.add_subgraph(g6)
 
-        graph_funs.write_graph_dot_to_file(graph_all, output_dir + 'graph_all.dot')
+
+        graph_funs.write_graph_dot_to_file(graph_all, output_dir + class_name + graph_name_dot)
 
     else:
         print('Graph already exist. Read from file')
-        (graph_all,) = pydot.graph_from_dot_file(output_dir + 'graph_all.dot')
+        (graph_all,) = pydot.graph_from_dot_file(output_dir + class_name + graph_name_dot)
 
     graph_all_nx = GraphFunctions.pydot_2_networkx(graph_all)
 
@@ -255,18 +246,68 @@ def main():
     graph_all_nx, indeg = graph_funs.calculate_indegree(graph_all_nx)
     graph_all_nx, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
     graph_all_nx, betwndeg = graph_funs.calculate_betweenness(graph_all_nx)
-
-    # TODO: Check the result of calculate_eigenvector_centrality functions
     graph_all_nx, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
     graph_all_nx, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
 
-    dump_json(output_dir + 'graph.json', graph_all_nx)
-    graph_funs.dump_graph_xls(output_dir, graph_all_nx)
+    graph_funs.dump_graph_xls(output_dir + class_name, graph_all_nx)
+
+    graph_all_pydot = graph_funs.networkx_2_pydot(graph_all_nx)
+    graph_funs.write_graph_dot_to_file(graph_all_pydot, output_dir + class_name + graph_name_x)
     print('Done!')
 
 
-
-if __name__ == "__main__":
+def main():
     # delete_links(data_frame)
     # find_links_in_onion(data_frame)
+    data_frame = load_datafram()
+    data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
+    data_frame_Human_Trafficking, data_frame_Others, data_frame_religion, data_frame_unkown, data_frame_library, \
+    data_frame_casino, data_frame_forum, data_frame_art, data_frame_services, data_frame_wiki, data_frame_marketplace, \
+    data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, \
+    data_frame_porno, data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = \
+        load_subdatafram(data_frame)
+
+    dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+
+    if os.path.exists(output_dir + 'processed_onion_dict.pkl'):
+        processed_onion_dict = load_obj('processed_onion_dict')
+    else:
+        processed_onion_dict = build_nodes_dic(data_frame)
+        save_obj(processed_onion_dict, 'processed_onion_dict')
+
+    classes = {"Porno": data_frame_porno,
+               "Drugs": data_frame_drug,
+               "social_network": data_frame_social_network,
+               "fraud": data_frame_fraud,
+               "cryptolocker": data_frame_cryptolocker,
+               "politics": data_frame_politics,
+               "leaked": data_frame_leaked,
+               "Human_Trafficking": data_frame_Human_Trafficking,
+               "Others": data_frame_Others,
+               "religion": data_frame_religion,
+               "unkown": data_frame_unkown,
+               "library": data_frame_library,
+               "casino": data_frame_casino,
+               "forum": data_frame_forum,
+               "art": data_frame_art,
+               "services": data_frame_services,
+               # "wiki": data_frame_wiki,
+               "marketplace": data_frame_marketplace,
+               # "directory": data_frame_directory,
+               "hosting": data_frame_hosting,
+               "cryptocurrency": data_frame_cryptocurrency,
+               "violence": data_frame_violence,
+               "hacking": data_frame_hacking,
+               "CC": data_frame_cc,
+               "Money": data_frame_money,
+               "Locked": data_frame_locked,
+               "PI": data_frame_pi
+               }
+    for class_name, df in classes.items():
+        print('procrssing class:' + class_name)
+        build_graphs(processed_onion_dict, dir_list, df, class_name,
+                     'graph_dot_{0}.dot'.format(class_name), 'graph_x_{}.dot'.format(class_name))
+
+
+if __name__ == "__main__":
     main()

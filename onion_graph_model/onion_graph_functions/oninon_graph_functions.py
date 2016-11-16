@@ -4,15 +4,62 @@ import pandas as pd
 import networkx as nx
 from networkx.drawing import nx_pydot
 from networkx.readwrite import json_graph
+from itertools import count, chain
 
 import os
 from operator import itemgetter
+from itertools import count
 
+
+def node_link_data_mod(G, attrs):
+    multigraph = G.is_multigraph()
+    id_ = attrs['id']
+    source = attrs['source']
+    target = attrs['target']
+    # Allow 'key' to be omitted from attrs if the graph is not a multigraph.
+    key = None if not multigraph else attrs['key']
+    if len(set([source, target, key])) < 3:
+        raise nx.NetworkXError('Attribute names are not unique.')
+    mapping = dict(zip(G, count()))
+    data = {}
+    data['directed'] = G.is_directed()
+    data['multigraph'] = multigraph
+    data['graph'] = G.graph
+    data['nodes'] = [dict(chain(G.node[n].items(), [(id_, n)])) for n in G]
+    if multigraph:
+        data['links'] = [
+            dict(chain(d.items(),
+                       [(source, mapping[u]), (target, mapping[v]), (key, k)]))
+            for u, v, k, d in G.edges_iter(keys=True, data=True)]
+    else:
+        data['links'] = [
+            dict(chain(d.items(),
+                       [(source, u), (target, v)]))
+            for u, v, d in G.edges_iter(data=True)]
+
+    return data
+
+
+def json2js(jsonfilepath, functionname='getData'):
+    """function converting json file to javascript file: json_data -> json_data.js
+    :param jsonfilepath: path to json file
+    :param functionname: name of javascript function which will return the data
+    :return None
+    """
+    # load json data
+    with open(jsonfilepath, 'r') as jsonfile:
+        data = json.load(jsonfile)
+    # write transformed javascript file
+    with open(jsonfilepath + '.js', 'w') as jsfile:
+        jsfile.write('function ' + functionname + '(){return ')
+        jsfile.write(json.dumps(data))
+        jsfile.write(';}')
 
 def save_to_jsonfile(filename, graph):
+    _attrs = dict(id='id', source='from', target='to', key='key')
     print('Dumping graph to JSON')
     g = graph
-    g_json = json_graph.node_link_data(g)  # node-link format to serialize
+    g_json = node_link_data_mod(g, _attrs)  # node-link format to serialize
     json.dump(g_json, open(filename, 'w'))
 
 
@@ -98,13 +145,46 @@ class GraphFunctions(object):
         g = graph
         try:
             ec = nx.eigenvector_centrality(g)
-            nx.set_node_attributes(g, 'eigen_cent', ec)
         except:
-            print('ERROR')
-            return g, None
-        # ec_sorted = sorted(ec.items(), key=itemgetter(1), reverse=True)
-        # color=nx.get_node_attributes(G,'betweenness')  (returns a dict keyed by node ids)
+            print('Error, Could not find eigen_cent')
+            ec = {}
+            for onion in g.nodes():
+                ec[onion] = 0
+        nx.set_node_attributes(g, 'eigen_cent', ec)
         return g, ec
+
+    @staticmethod
+    def calculate_HITS_centrality(graph):
+        print('Calculating Hubs and authorities...')
+        g = graph
+        try:
+            h, a = nx.hits_scipy(g)
+        except:
+            print('Error, Could not find Hubs and authorities')
+            h, a = {}, {}
+            for onion in g.nodes():
+                a[onion] = 0
+                h[onion] = 0
+        nx.set_node_attributes(g, 'Hub', h)
+        nx.set_node_attributes(g, 'authority', a)
+        return g, h, a
+
+    @staticmethod
+    def find_density(graph):
+        return nx.density(graph)
+
+    @staticmethod
+    def find_cliques(graph):
+        ''' Calculate cliques and return as sorted list.  Print sizes of cliques found.
+        '''
+        graph = graph.to_undirected()
+        g = graph
+        cl = nx.find_cliques(g)
+        cl = sorted(list(cl), key=len, reverse=True)
+        # print ("Number of cliques:", len(cl))
+        cl_sizes = [len(c) for c in cl]
+        # print ("Size of cliques:", cl_sizes)
+        return cl
 
     @staticmethod
     def find_cliques(graph):
@@ -132,19 +212,23 @@ class GraphFunctions(object):
                                     n_d['eigen_cent'], n_d['betweenness'], n_d['page_rank']]
             except:
                 ## TODO add the not found node to DF
+                df_pr.loc[index] = [n_d['onion'], 'New_Node', n_d['degree'],
+                                    n_d['indegree'], n_d['outdegree'], n_d['degree_cent'],
+                                    n_d['eigen_cent'], n_d['betweenness'], n_d['page_rank']]
                 print(n_d)
 
         self.write_dataframe_xls(df_pr, output_dir + 'df_pr.xlsx')
         print('Finish dumping graph results')
 
     def set_node_attributes_onion(self, G):
+        mapping = dict(zip(G, count()))
+        nx.set_node_attributes(G, 'id', mapping)
         for node in G.nodes():
             if node in self.processed_onion_dict.keys():
                 obj = self.processed_onion_dict[node]
                 G.node[node]['group'] = obj.get_main_class()
                 G.node[node]['label'] = obj.get_main_class()
                 G.node[node]['onion'] = obj.get_onion()
-                G.node[node]['onion'] = obj.get_onion_ID()
             else:
                 G.node[node]['group'] = 'New_Node'
                 G.node[node]['label'] = 'New_Node'

@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.externals import joblib
 import os
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
-from onion_graph_model.onion_graph_functions.oninon_graph_functions import save_to_jsonfile, read_json_file
+from onion_graph_model.onion_graph_functions.oninon_graph_functions import *  # save_to_jsonfile, read_json_file
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
 
 from networkx.readwrite import json_graph
@@ -187,7 +187,8 @@ def build_nodes_dic(data_frame):
     return processed_onion_dict
 
 
-def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, graph_name_dot, graph_name_x):
+def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, graph_name_dot,
+                 graph_name_x, graph_name_json):
     class_name = class_name + '/'
     if not os.path.exists(output_dir + class_name):
         os.makedirs(output_dir + class_name)
@@ -248,11 +249,18 @@ def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, g
     graph_all_nx, betwndeg = graph_funs.calculate_betweenness(graph_all_nx)
     graph_all_nx, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
     graph_all_nx, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
+    # graph_all_nx, hub, auth = graph_funs.calculate_HITS_centrality(graph_all_nx)
+    # clique = graph_funs.find_cliques(graph_all_nx)
+    #density = graph_funs.find_density(graph_all_nx)
 
     graph_funs.dump_graph_xls(output_dir + class_name, graph_all_nx)
 
+    save_to_jsonfile(output_dir + class_name + graph_name_json, graph_all_nx)
+
     graph_all_pydot = graph_funs.networkx_2_pydot(graph_all_nx)
     graph_funs.write_graph_dot_to_file(graph_all_pydot, output_dir + class_name + graph_name_x)
+    json2js(output_dir + class_name + graph_name_json)
+
     print('Done!')
 
 
@@ -306,7 +314,9 @@ def main():
     for class_name, df in classes.items():
         print('procrssing class:' + class_name)
         build_graphs(processed_onion_dict, dir_list, df, class_name,
-                     'graph_dot_{0}.dot'.format(class_name), 'graph_x_{}.dot'.format(class_name))
+                     'graph_dot_{0}.dot'.format(class_name),
+                     'graph_x_{}.dot'.format(class_name),
+                     'graph_json_{}.json'.format(class_name))
 
 
 if __name__ == "__main__":

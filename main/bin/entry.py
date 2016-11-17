@@ -266,6 +266,8 @@ def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, g
     print('Done!')
 
 
+# python -m http.server -b 127.0.0.1
+
 def main():
     # delete_links(data_frame)
     # find_links_in_onion(data_frame)

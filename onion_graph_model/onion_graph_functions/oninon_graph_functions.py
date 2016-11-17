@@ -11,35 +11,6 @@ from operator import itemgetter
 from itertools import count
 
 
-def node_link_data_mod(G, attrs):
-    multigraph = G.is_multigraph()
-    id_ = attrs['id']
-    source = attrs['source']
-    target = attrs['target']
-    # Allow 'key' to be omitted from attrs if the graph is not a multigraph.
-    key = None if not multigraph else attrs['key']
-    if len(set([source, target, key])) < 3:
-        raise nx.NetworkXError('Attribute names are not unique.')
-    mapping = dict(zip(G, count()))
-    data = {}
-    data['directed'] = G.is_directed()
-    data['multigraph'] = multigraph
-    data['graph'] = G.graph
-    data['nodes'] = [dict(chain(G.node[n].items(), [(id_, n)])) for n in G]
-    if multigraph:
-        data['links'] = [
-            dict(chain(d.items(),
-                       [(source, mapping[u]), (target, mapping[v]), (key, k)]))
-            for u, v, k, d in G.edges_iter(keys=True, data=True)]
-    else:
-        data['links'] = [
-            dict(chain(d.items(),
-                       [(source, u), (target, v)]))
-            for u, v, d in G.edges_iter(data=True)]
-
-    return data
-
-
 def json2js(jsonfilepath, functionname='getData'):
     """function converting json file to javascript file: json_data -> json_data.js
     :param jsonfilepath: path to json file
@@ -56,11 +27,13 @@ def json2js(jsonfilepath, functionname='getData'):
         jsfile.write(';}')
 
 def save_to_jsonfile(filename, graph):
-    _attrs = dict(id='id', source='from', target='to', key='key')
+    _attrs = dict(id='id_onion', source='from', target='to', key='key')
     print('Dumping graph to JSON')
     g = graph
-    g_json = node_link_data_mod(g, _attrs)  # node-link format to serialize
+    g_json = json_graph.node_link_data(g, _attrs)  # node-link format to serialize
     json.dump(g_json, open(filename, 'w'))
+    json2js(filename)
+
 
 
 def read_json_file(filename, info=True):
@@ -221,6 +194,9 @@ class GraphFunctions(object):
         print('Finish dumping graph results')
 
     def set_node_attributes_onion(self, G):
+        # nx.set_edge_attributes(graph_all_nx, 'arrow')
+        for egde in G.edges():
+            G.egde[egde]['arrow'] = 'to'
         mapping = dict(zip(G, count()))
         nx.set_node_attributes(G, 'id', mapping)
         for node in G.nodes():

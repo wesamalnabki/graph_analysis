@@ -237,6 +237,7 @@ def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, g
     # Assign each node a color, main_class
     graph_all_nx = graph_funs.set_node_attributes_onion(graph_all_nx)
 
+
     graph_funs.print_graph_info(graph_all_nx)
 
     # graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
@@ -257,9 +258,10 @@ def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, g
 
     save_to_jsonfile(output_dir + class_name + graph_name_json, graph_all_nx)
 
+    # save_to_jsonfile_mod(output_dir + class_name + "_mod_" + graph_name_json, graph_all_nx)
+
     graph_all_pydot = graph_funs.networkx_2_pydot(graph_all_nx)
     graph_funs.write_graph_dot_to_file(graph_all_pydot, output_dir + class_name + graph_name_x)
-    json2js(output_dir + class_name + graph_name_json)
 
     print('Done!')
 

@@ -1,19 +1,18 @@
 import tldextract
 from bs4 import BeautifulSoup
-import pydot
-import pandas as pd
+
 from sklearn.externals import joblib
 import os
-from onion_graph_model.onion_graph_functions.oninon_graph_functions import GraphFunctions
 from onion_graph_model.onion_graph_functions.oninon_graph_functions import *  # save_to_jsonfile, read_json_file
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
-
 from networkx.readwrite import json_graph
+from operator import itemgetter
+
 import networkx as nx
 
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
-dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v16_FULL.xls'
+dataset_dir_xls = 'D:/Wesam/dataset xls/DF_17.xlsx'
 output_dir = 'D:/Wesam/Graph_Analysis_Results/'
 
 
@@ -187,84 +186,25 @@ def build_nodes_dic(data_frame):
     return processed_onion_dict
 
 
-def build_graphs(processed_onion_dict, dir_list, data_frame_class, class_name, graph_name_dot,
-                 graph_name_x, graph_name_json):
-    class_name = class_name + '/'
-    if not os.path.exists(output_dir + class_name):
-        os.makedirs(output_dir + class_name)
+def build_graphs(G, processed_onion_dict, dir_list, class_name, consider_dic=False):
+    for onion in processed_onion_dict.values():
+        if len(onion.get_onion()) > 30:
+            continue
+        if onion.get_main_class().startswith(class_name):
+            G.add_node(onion.get_onion())
+            for in_link in onion.get_incoming_links_onion():
+                if not consider_dic:
+                    if in_link in dir_list:
+                        continue
+                G.add_edge(in_link, onion.get_onion())
 
+            for out_link in onion.get_outgoing_links_onion():
+                if not consider_dic:
+                    if out_link in dir_list:
+                        continue
+                G.add_edge(onion.get_onion(), out_link)
 
-
-    # Create an object of GraphFunctions class
-    graph_funs = GraphFunctions(processed_onion_dict)
-
-    if not os.path.exists(output_dir + class_name + graph_name_dot):
-        graph_all = pydot.Dot(graph_type='digraph')
-
-        g1, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_class,
-                                                      node_group=class_name[:-1], node_color='red', dir_list=dir_list,
-                                                      ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
-        # g2, graph_all = graph_funs.create_class_graph(graph_all, data_frame_porno, 'Porno',
-        #                                              'yellow', dir_list,
-        #                                              ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
-
-        # g3, graph_all = graph_funs.create_class_graph(graph_total=graph_all, data_frame=data_frame_cc, \
-        #                                              node_group='CC', node_color='pink', dir_list=dir_list, \
-        #                                              ignore_incoming_from_dict=True, ignore_outgoing_to_dict=False)
-        # g4, graph_all = create_class_graph(graph_all, data_frame_cryptocurrency, processed_onion_dict, 'Cryptocurrency',
-        #  'gray', dir_list)
-        # g5, graph_all = create_class_graph(graph_all, data_frame_hacking, processed_onion_dict, 'Hacking', 'black',
-        #  dir_list)
-        # g6, graph_all = create_class_graph(graph_all, data_frame_marketplace, processed_onion_dict, 'marketplace',
-        #  '#3F8A36', dir_list)
-
-        graph_all.add_subgraph(g1)
-        # graph_all.add_subgraph(g2)
-        #graph_all.add_subgraph(g3)
-        # graph_all.add_subgraph(g4)
-        # graph_all.add_subgraph(g5)
-        # graph_all.add_subgraph(g6)
-
-
-        graph_funs.write_graph_dot_to_file(graph_all, output_dir + class_name + graph_name_dot)
-
-    else:
-        print('Graph already exist. Read from file')
-        (graph_all,) = pydot.graph_from_dot_file(output_dir + class_name + graph_name_dot)
-
-    graph_all_nx = GraphFunctions.pydot_2_networkx(graph_all)
-
-    # Assign each node a color, main_class
-    graph_all_nx = graph_funs.set_node_attributes_onion(graph_all_nx)
-
-
-    graph_funs.print_graph_info(graph_all_nx)
-
-    # graph_funs.report_node_data(graph_all_nx, node="alphabayxsxlxeaz")
-
-    # Graph Analysis
-    graph_all_nx, pr = graph_funs.graph_page_rank(graph=graph_all_nx)
-    graph_all_nx, deg = graph_funs.calculate_degree(graph_all_nx)
-    graph_all_nx, indeg = graph_funs.calculate_indegree(graph_all_nx)
-    graph_all_nx, outdeg = graph_funs.calculate_outdegree(graph_all_nx)
-    graph_all_nx, betwndeg = graph_funs.calculate_betweenness(graph_all_nx)
-    graph_all_nx, eigen = graph_funs.calculate_eigenvector_centrality(graph_all_nx)
-    graph_all_nx, degcent = graph_funs.calculate_degree_centrality(graph_all_nx)
-    # graph_all_nx, hub, auth = graph_funs.calculate_HITS_centrality(graph_all_nx)
-    # clique = graph_funs.find_cliques(graph_all_nx)
-    #density = graph_funs.find_density(graph_all_nx)
-
-    graph_funs.dump_graph_xls(output_dir + class_name, graph_all_nx)
-
-    save_to_jsonfile(output_dir + class_name + graph_name_json, graph_all_nx)
-
-    # save_to_jsonfile_mod(output_dir + class_name + "_mod_" + graph_name_json, graph_all_nx)
-
-    graph_all_pydot = graph_funs.networkx_2_pydot(graph_all_nx)
-    graph_funs.write_graph_dot_to_file(graph_all_pydot, output_dir + class_name + graph_name_x)
-
-    print('Done!')
-
+    return GraphFunctions.set_node_attributes_onion(G, processed_onion_dict)
 
 # python -m http.server -b 127.0.0.1
 
@@ -272,14 +212,11 @@ def main():
     # delete_links(data_frame)
     # find_links_in_onion(data_frame)
     data_frame = load_datafram()
-    data_frame_social_network, data_frame_fraud, data_frame_cryptolocker, data_frame_politics, data_frame_leaked, \
-    data_frame_Human_Trafficking, data_frame_Others, data_frame_religion, data_frame_unkown, data_frame_library, \
-    data_frame_casino, data_frame_forum, data_frame_art, data_frame_services, data_frame_wiki, data_frame_marketplace, \
-    data_frame_directory, data_frame_hosting, data_frame_drug, data_frame_cryptocurrency, data_frame_violence, \
-    data_frame_porno, data_frame_hacking, data_frame_cc, data_frame_money, data_frame_locked, data_frame_pi = \
-        load_subdatafram(data_frame)
 
-    dir_list = list(data_frame_directory.Onion) + list(data_frame_wiki.Onion)
+    dir_list_1 = data_frame[data_frame.Main_Class == 'Hosting/ Directory'].Onion
+    dir_list_2 = data_frame[data_frame.Main_Class == 'Wiki'].Onion
+    dir_list = list(dir_list_1) + list(dir_list_2)
+    # dir_list = []
 
     if os.path.exists(output_dir + 'processed_onion_dict.pkl'):
         processed_onion_dict = load_obj('processed_onion_dict')
@@ -287,41 +224,110 @@ def main():
         processed_onion_dict = build_nodes_dic(data_frame)
         save_obj(processed_onion_dict, 'processed_onion_dict')
 
-    classes = {"Porno": data_frame_porno,
-               "Drugs": data_frame_drug,
-               "social_network": data_frame_social_network,
-               "fraud": data_frame_fraud,
-               "cryptolocker": data_frame_cryptolocker,
-               "politics": data_frame_politics,
-               "leaked": data_frame_leaked,
-               "Human_Trafficking": data_frame_Human_Trafficking,
-               "Others": data_frame_Others,
-               "religion": data_frame_religion,
-               "unkown": data_frame_unkown,
-               "library": data_frame_library,
-               "casino": data_frame_casino,
-               "forum": data_frame_forum,
-               "art": data_frame_art,
-               "services": data_frame_services,
-               # "wiki": data_frame_wiki,
-               "marketplace": data_frame_marketplace,
-               # "directory": data_frame_directory,
-               "hosting": data_frame_hosting,
-               "cryptocurrency": data_frame_cryptocurrency,
-               "violence": data_frame_violence,
-               "hacking": data_frame_hacking,
-               "CC": data_frame_cc,
-               "Money": data_frame_money,
-               "Locked": data_frame_locked,
-               "PI": data_frame_pi
-               }
-    for class_name, df in classes.items():
+    graphs_list = []
+    classes = ['Cryptocurrency', 'Drugs', 'Porno', 'Marketplace', 'Counterfeit Credit-Cards',
+               'Library', 'Violence', 'Counterfeit Personal-Identification', 'Counterfeit Money',
+               'Social-Network', 'Locked', 'Unkown', 'Down', 'Forum', 'Hacking', 'Casino',
+               'Art', 'Religion', 'cryptolocker', 'Others']
+
+    for class_name in classes:
+
         print('procrssing class:' + class_name)
-        build_graphs(processed_onion_dict, dir_list, df, class_name,
-                     'graph_dot_{0}.dot'.format(class_name),
-                     'graph_x_{}.dot'.format(class_name),
-                     'graph_json_{}.json'.format(class_name))
+        G = nx.DiGraph()
+        G = build_graphs(G, processed_onion_dict, dir_list, class_name, False)
+
+        if class_name == '':
+            save_obj(G, 'ALL_f')
+            save_to_jsonfile(output_dir + 'ALL_f' + '/' + 'ALL_f' + '.json', G)
+
+        graph_funs = GraphFunctions(G)
+
+        if class_name != '':
+            print('Find Katz RANK')
+            G, kr = graph_funs.Katz_Rank()
+            kr_s = sorted(kr.items(), key=itemgetter(1), reverse=True)
+            kr_s_dic = {}
+            for idx, elm in enumerate(kr_s):
+                kr_s_dic[elm[0]] = idx
+            nx.set_node_attributes(G, 'katz_Rank', kr_s_dic)
+
+        print('Find Wesam RANK')
+        my_rank = graph_funs.find_Rank_wesam()
+        my_rank_s = sorted(my_rank.items(), key=itemgetter(1), reverse=True)
+        pr_dic = {}
+        for idx, elm in enumerate(my_rank_s):
+            pr_dic[elm[0]] = idx
+        nx.set_node_attributes(G, 'W_Rank', pr_dic)
+
+        print('Find HIST RANK')
+        G, hub, auth = graph_funs.calculate_HITS_centrality()
+        HITS_auth_rank = sorted(auth.items(), key=itemgetter(1), reverse=True)
+        rank_dic = {}
+        for idx, elm in enumerate(HITS_auth_rank):
+            rank_dic[elm[0]] = idx
+        nx.set_node_attributes(G, 'HITS_Auth_Rank', rank_dic)
+
+        HITS_hub_rank = sorted(hub.items(), key=itemgetter(1), reverse=True)
+        rank_dic = {}
+        for idx, elm in enumerate(HITS_hub_rank):
+            rank_dic[elm[0]] = idx
+        nx.set_node_attributes(G, 'HITS_Hub_rank', rank_dic)
+
+        print('Find EV RANK')
+        G, eigen = graph_funs.calculate_eigenvector_centrality()
+        ev_s = sorted(eigen.items(), key=itemgetter(1), reverse=True)
+        ev_dic = {}
+        for idx, elm in enumerate(ev_s):
+            ev_dic[elm[0]] = idx
+        nx.set_node_attributes(G, 'EV_Rank', ev_dic)
+
+        # Graph Analysis
+        print('Find PR RANK')
+        G, pr = graph_funs.graph_page_rank()
+        pr_s = sorted(pr.items(), key=itemgetter(1), reverse=True)
+        pr_dic = {}
+        for idx, elm in enumerate(pr_s):
+            pr_dic[elm[0]] = idx
+        nx.set_node_attributes(G, 'PR_Rank', pr_dic)
+
+        G, deg = graph_funs.calculate_degree()
+        G, indeg = graph_funs.calculate_indegree()
+        G, outdeg = graph_funs.calculate_outdegree()
+        # G, betwndeg = graph_funs.calculate_betweenness()
+
+        G, degcent = graph_funs.calculate_degree_centrality()
+
+        # clique = graph_funs.find_cliques(G)
+        # density = graph_funs.find_density(G)
+
+
+        graph_funs.print_graph_info()
+
+        if class_name == '':
+            class_name = 'ALL'
+
+        if not os.path.exists(output_dir + class_name + '/'):
+            os.makedirs(output_dir + class_name + '/')
+
+        graphs_list.append(G)
+        save_to_jsonfile(output_dir + class_name + '/' + class_name + '.json', G)
+        save_obj(graphs_list, 'graphs_list')
+        json_graph
 
 
 if __name__ == "__main__":
+    H = nx.read_gml('lesmis.gml')
+
+    graph_funs = GraphFunctions(H)
+
+    print('Find Wesam RANK')
+    my_rank = graph_funs.find_Rank_wesam()
+    my_rank_s = sorted(my_rank.items(), key=itemgetter(1), reverse=True)
+    pr_dic = {}
+    for idx, elm in enumerate(my_rank_s):
+        pr_dic[elm[0]] = idx
+    nx.set_node_attributes(H, 'W_Rank', pr_dic)
+
+    save_to_jsonfile(output_dir + 'lesmis' + '/' + 'lesmis' + '.json', H)
+
     main()

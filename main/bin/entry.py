@@ -3,16 +3,14 @@ from bs4 import BeautifulSoup
 
 from sklearn.externals import joblib
 import os
-from onion_graph_model.onion_graph_functions.oninon_graph_functions import *  # save_to_jsonfile, read_json_file
+from onion_graph_model.onion_graph_functions.oninon_graph_functions import *
 from onion_graph_model.onion_node_model.onion_node_model import OnionGraphBuilder
-from networkx.readwrite import json_graph
 from operator import itemgetter
 
-import networkx as nx
 
 
 dataset_dir = 'D:/Wesam/Onion_Dataset'
-dataset_dir_xls = 'D:/Wesam/dataset xls/DF_17.xlsx'
+dataset_dir_xls = 'D:/Wesam/dataset xls/Manual_Classification_v17_FULL.xlsx'
 output_dir = 'D:/Wesam/Graph_Analysis_Results/'
 
 
@@ -186,20 +184,20 @@ def build_nodes_dic(data_frame):
     return processed_onion_dict
 
 
-def build_graphs(G, processed_onion_dict, dir_list, class_name, consider_dic=False):
+def build_graphs(G , processed_onion_dict , dir_list , class_name , with_dir=False):
     for onion in processed_onion_dict.values():
         if len(onion.get_onion()) > 30:
             continue
         if onion.get_main_class().startswith(class_name):
             G.add_node(onion.get_onion())
             for in_link in onion.get_incoming_links_onion():
-                if not consider_dic:
+                if not with_dir:
                     if in_link in dir_list:
                         continue
                 G.add_edge(in_link, onion.get_onion())
 
             for out_link in onion.get_outgoing_links_onion():
-                if not consider_dic:
+                if not with_dir:
                     if out_link in dir_list:
                         continue
                 G.add_edge(onion.get_onion(), out_link)
@@ -207,6 +205,64 @@ def build_graphs(G, processed_onion_dict, dir_list, class_name, consider_dic=Fal
     return GraphFunctions.set_node_attributes_onion(G, processed_onion_dict)
 
 # python -m http.server -b 127.0.0.1
+
+def find_PR_ranks(G , graph_funs):
+    print ( 'Find PR RANK' )
+    G , pr = graph_funs.graph_page_rank ( )
+    pr_s = sorted ( pr.items ( ) , key=itemgetter ( 1 ) , reverse=True )
+    pr_dic = {}
+    for idx , elm in enumerate ( pr_s ):
+        pr_dic[ elm[ 0 ] ] = idx
+    nx.set_node_attributes ( G , 'PRRank' , pr_dic )
+    return G
+
+
+def find_HIST_ranks(G , graph_funs):
+    print ( 'Find HIST RANK' )
+    G , hub , auth = graph_funs.calculate_HITS_centrality ( )
+    HITS_auth_rank = sorted ( auth.items ( ) , key=itemgetter ( 1 ) , reverse=True )
+    rank_dic = {}
+    for idx , elm in enumerate ( HITS_auth_rank ):
+        rank_dic[ elm[ 0 ] ] = idx
+    nx.set_node_attributes ( G , 'HITSAuthRank' , rank_dic )  # HITS_Auth_Rank_v
+
+    HITS_hub_rank = sorted ( hub.items ( ) , key=itemgetter ( 1 ) , reverse=True )
+    rank_dic = {}
+    for idx , elm in enumerate ( HITS_hub_rank ):
+        rank_dic[ elm[ 0 ] ] = idx
+    nx.set_node_attributes ( G , 'HITSHubRank' , rank_dic )
+
+    return G
+
+
+def find_Katz_rank(G , graph_funs):
+    print ( 'Find Katz RANK' )
+    G , kr = graph_funs.Katz_Rank ( )
+    kr_s = sorted ( kr.items ( ) , key=itemgetter ( 1 ) , reverse=True )
+    kr_s_dic = {}
+    for idx , elm in enumerate ( kr_s ):
+        kr_s_dic[ elm[ 0 ] ] = idx
+        nx.set_node_attributes ( G , 'katzRank' , kr_s_dic )
+
+
+def find_wesam_Rank(G , graph_funs):
+    print ( 'Find Wesam RANK' )
+    my_rank , my_weights = graph_funs.find_Rank_wesam ( )
+    my_rank_s = sorted ( my_weights.items ( ) , key=itemgetter ( 1 ) , reverse=True )
+    pr_dic = {}
+    for idx , elm in enumerate ( my_rank_s ):
+        pr_dic[ elm[ 0 ] ] = idx
+    nx.set_node_attributes ( G , 'WesamRank' , pr_dic )  # W_Rank_v
+
+
+def find_graph_cent(G , graph_funs):
+    G , _ = graph_funs.calculate_degree ( )
+    G , _ = graph_funs.calculate_indegree ( )
+    G , _ = graph_funs.calculate_outdegree ( )
+    G , _ = graph_funs.calculate_betweenness ( )
+    G , _ = graph_funs.calculate_degree_centrality ( )
+
+    return G
 
 def main():
     # delete_links(data_frame)
@@ -225,109 +281,33 @@ def main():
         save_obj(processed_onion_dict, 'processed_onion_dict')
 
     graphs_list = []
-    classes = ['Cryptocurrency', 'Drugs', 'Porno', 'Marketplace', 'Counterfeit Credit-Cards',
-               'Library', 'Violence', 'Counterfeit Personal-Identification', 'Counterfeit Money',
-               'Social-Network', 'Locked', 'Unkown', 'Down', 'Forum', 'Hacking', 'Casino',
-               'Art', 'Religion', 'cryptolocker', 'Others']
+
+    G = nx.DiGraph ( )
+
+    classes = [ 'Cryptocurrency' , 'Drugs' , 'Porno' , 'Counterfeit Credit-Cards' , 'Hacking' ,
+                'Violence' , 'Counterfeit Personal-Identification' , 'Counterfeit Money' ]
 
     for class_name in classes:
 
-        print('procrssing class:' + class_name)
-        G = nx.DiGraph()
+        print ( 'Processing class:' + class_name )
+        output_class = output_dir + class_name + '/'
+
+        if not os.path.exists ( output_class ):
+            os.makedirs ( output_class )
+
+        graph_name = 'Illegal_class_withoutDir'
         G = build_graphs(G, processed_onion_dict, dir_list, class_name, False)
 
-        if class_name == '':
-            save_obj(G, 'ALL_f')
-            save_to_jsonfile(output_dir + 'ALL_f' + '/' + 'ALL_f' + '.json', G)
+    graph_funs = GraphFunctions ( G)
 
-        graph_funs = GraphFunctions(G)
+    find_graph_cent ( G , graph_funs )
+    find_Katz_rank ( G , graph_funs )
+    find_HIST_ranks ( G , graph_funs )
+    find_PR_ranks ( G , graph_funs)
 
-        if class_name != '':
-            print('Find Katz RANK')
-            G, kr = graph_funs.Katz_Rank()
-            kr_s = sorted(kr.items(), key=itemgetter(1), reverse=True)
-            kr_s_dic = {}
-            for idx, elm in enumerate(kr_s):
-                kr_s_dic[elm[0]] = idx
-            nx.set_node_attributes(G, 'katz_Rank', kr_s_dic)
-
-        print('Find Wesam RANK')
-        my_rank = graph_funs.find_Rank_wesam()
-        my_rank_s = sorted(my_rank.items(), key=itemgetter(1), reverse=True)
-        pr_dic = {}
-        for idx, elm in enumerate(my_rank_s):
-            pr_dic[elm[0]] = idx
-        nx.set_node_attributes(G, 'W_Rank', pr_dic)
-
-        print('Find HIST RANK')
-        G, hub, auth = graph_funs.calculate_HITS_centrality()
-        HITS_auth_rank = sorted(auth.items(), key=itemgetter(1), reverse=True)
-        rank_dic = {}
-        for idx, elm in enumerate(HITS_auth_rank):
-            rank_dic[elm[0]] = idx
-        nx.set_node_attributes(G, 'HITS_Auth_Rank', rank_dic)
-
-        HITS_hub_rank = sorted(hub.items(), key=itemgetter(1), reverse=True)
-        rank_dic = {}
-        for idx, elm in enumerate(HITS_hub_rank):
-            rank_dic[elm[0]] = idx
-        nx.set_node_attributes(G, 'HITS_Hub_rank', rank_dic)
-
-        print('Find EV RANK')
-        G, eigen = graph_funs.calculate_eigenvector_centrality()
-        ev_s = sorted(eigen.items(), key=itemgetter(1), reverse=True)
-        ev_dic = {}
-        for idx, elm in enumerate(ev_s):
-            ev_dic[elm[0]] = idx
-        nx.set_node_attributes(G, 'EV_Rank', ev_dic)
-
-        # Graph Analysis
-        print('Find PR RANK')
-        G, pr = graph_funs.graph_page_rank()
-        pr_s = sorted(pr.items(), key=itemgetter(1), reverse=True)
-        pr_dic = {}
-        for idx, elm in enumerate(pr_s):
-            pr_dic[elm[0]] = idx
-        nx.set_node_attributes(G, 'PR_Rank', pr_dic)
-
-        G, deg = graph_funs.calculate_degree()
-        G, indeg = graph_funs.calculate_indegree()
-        G, outdeg = graph_funs.calculate_outdegree()
-        # G, betwndeg = graph_funs.calculate_betweenness()
-
-        G, degcent = graph_funs.calculate_degree_centrality()
-
-        # clique = graph_funs.find_cliques(G)
-        # density = graph_funs.find_density(G)
-
-
-        graph_funs.print_graph_info()
-
-        if class_name == '':
-            class_name = 'ALL'
-
-        if not os.path.exists(output_dir + class_name + '/'):
-            os.makedirs(output_dir + class_name + '/')
-
-        graphs_list.append(G)
-        save_to_jsonfile(output_dir + class_name + '/' + class_name + '.json', G)
-        save_obj(graphs_list, 'graphs_list')
-        json_graph
-
+    graphs_list.append ( G )
+    save_to_jsonfile ( output_dir + graph_name + '/' + graph_name + '.json' , G )
+    save_obj ( graphs_list , graph_name )
 
 if __name__ == "__main__":
-    H = nx.read_gml('lesmis.gml')
-
-    graph_funs = GraphFunctions(H)
-
-    print('Find Wesam RANK')
-    my_rank = graph_funs.find_Rank_wesam()
-    my_rank_s = sorted(my_rank.items(), key=itemgetter(1), reverse=True)
-    pr_dic = {}
-    for idx, elm in enumerate(my_rank_s):
-        pr_dic[elm[0]] = idx
-    nx.set_node_attributes(H, 'W_Rank', pr_dic)
-
-    save_to_jsonfile(output_dir + 'lesmis' + '/' + 'lesmis' + '.json', H)
-
     main()
